@@ -55,7 +55,7 @@ With that setup:
 
 - `work` stays primary whenever it is under the near-exhausted threshold.
 - If `work` hits a limit, the session fails over to `personal`.
-- While running on `personal`, the runner polls usage every 3 minutes by default.
+- While running on `personal`, the runner polls usage every 30 minutes by default.
 - As soon as `work` recovers and the active Claude session has been quiet for 15 seconds, the runner migrates the session back to `work`.
 - The default cooldown before a failback is 30 minutes after the last switch.
 
@@ -88,14 +88,14 @@ CLI options:
 
 - `--auto-failback`: enable proactive failback
 - `--no-auto-failback`: force failback off
-- `--failback-poll-ms <n>`: polling interval, default `180000`
+- `--failback-poll-ms <n>`: polling interval, default `1800000`
 - `--failback-idle-ms <n>`: quiet window before failback, default `15000`
 - `--failback-cooldown-ms <n>`: cooldown after a switch, default `1800000`
 
 Environment variables:
 
 - `CLAUDE_NONSTOP_AUTO_FAILBACK=1`: enable proactive failback by default
-- `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks, default `180000`
+- `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks, default `1800000`
 - `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback, default `15000`
 - `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback, default `1800000`
 - `CLAUDE_NONSTOP_DISABLE_FAILBACK=1`: disable proactive failback
@@ -106,14 +106,14 @@ Recommended manual test flow:
 
 1. Register two accounts and set priority:
    `work=1`, `personal=2`
-2. Shorten timing so failback is easy to observe:
+2. Run with the conservative production-style defaults:
 
 ```bash
 kakaostyle-claude-nonstop \
   --auto-failback \
-  --failback-poll-ms 5000 \
-  --failback-idle-ms 2000 \
-  --failback-cooldown-ms 5000
+  --failback-poll-ms 1800000 \
+  --failback-idle-ms 15000 \
+  --failback-cooldown-ms 1800000
 ```
 
 3. Trigger or wait for a `work -> personal` failover.
