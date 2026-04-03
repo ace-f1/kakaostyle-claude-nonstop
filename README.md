@@ -55,8 +55,9 @@ With that setup:
 
 - `work` stays primary whenever it is under the near-exhausted threshold.
 - If `work` hits a limit, the session fails over to `personal`.
-- While running on `personal`, the runner polls usage every minute.
-- As soon as `work` recovers and the active Claude session has been quiet for 5 seconds, the runner migrates the session back to `work`.
+- While running on `personal`, the runner polls usage every 3 minutes by default.
+- As soon as `work` recovers and the active Claude session has been quiet for 15 seconds, the runner migrates the session back to `work`.
+- The default cooldown before a failback is 30 minutes after the last switch.
 
 Run it like this:
 
@@ -87,16 +88,16 @@ CLI options:
 
 - `--auto-failback`: enable proactive failback
 - `--no-auto-failback`: force failback off
-- `--failback-poll-ms <n>`: polling interval
-- `--failback-idle-ms <n>`: quiet window before failback
-- `--failback-cooldown-ms <n>`: cooldown after a switch
+- `--failback-poll-ms <n>`: polling interval, default `180000`
+- `--failback-idle-ms <n>`: quiet window before failback, default `15000`
+- `--failback-cooldown-ms <n>`: cooldown after a switch, default `1800000`
 
 Environment variables:
 
 - `CLAUDE_NONSTOP_AUTO_FAILBACK=1`: enable proactive failback by default
-- `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks
-- `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback
-- `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback
+- `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks, default `180000`
+- `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback, default `15000`
+- `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback, default `1800000`
 - `CLAUDE_NONSTOP_DISABLE_FAILBACK=1`: disable proactive failback
 
 ### Manual Verification

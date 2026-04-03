@@ -1670,17 +1670,17 @@ Options:
   --remote-access         Run in tmux with Slack channels
   --auto-failback         Reclaim the session when a higher-priority account recovers
   --no-auto-failback      Explicitly disable proactive failback
-  --failback-poll-ms <n>  Poll interval for recovery checks in milliseconds
-  --failback-idle-ms <n>  Required quiet period before failback in milliseconds
+  --failback-poll-ms <n>  Poll interval for recovery checks in milliseconds (default: 180000)
+  --failback-idle-ms <n>  Required quiet period before failback in milliseconds (default: 15000)
   --failback-cooldown-ms <n>
-                          Minimum delay after a switch before failback in milliseconds
+                          Minimum delay after a switch before failback in milliseconds (default: 1800000)
 
 All other arguments are passed through to \`claude\`.
 Failback tuning:
   CLAUDE_NONSTOP_AUTO_FAILBACK=1       Enable proactive failback by default
-  CLAUDE_NONSTOP_FAILBACK_POLL_MS      How often to check for primary recovery (default: 60000)
-  CLAUDE_NONSTOP_FAILBACK_IDLE_MS      Required quiet period before failback (default: 5000)
-  CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS  Minimum delay after a switch before failback (default: 600000)
+  CLAUDE_NONSTOP_FAILBACK_POLL_MS      How often to check for primary recovery (default: 180000)
+  CLAUDE_NONSTOP_FAILBACK_IDLE_MS      Required quiet period before failback (default: 15000)
+  CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS  Minimum delay after a switch before failback (default: 1800000)
   CLAUDE_NONSTOP_DISABLE_FAILBACK=1    Disable proactive failback even when enabled elsewhere
 
 Run \`setup --help\`, \`webhook\`, or \`hooks\` for subcommand details.
