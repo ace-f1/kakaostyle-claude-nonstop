@@ -1,9 +1,9 @@
-# claude-account-orchestrator
+# kakaostyle-claude-nonstop
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 
-Priority-aware multi-account switching + Slack remote access for Claude Code.
+KakaoStyle fork of `claude-nonstop` with priority-aware multi-account switching, failback, and Slack remote access for Claude Code.
 
 **Failover:** When you hit a rate limit mid-session, the runner migrates your session to a different account and resumes automatically.
 
@@ -20,10 +20,10 @@ Priority-aware multi-account switching + Slack remote access for Claude Code.
 ## Usage
 
 ```bash
-claude-account-orchestrator                       # Run Claude (best account, auto-switching)
-claude-account-orchestrator -p "fix the bug"      # One-shot prompt
-claude-account-orchestrator status                # Show usage across all accounts
-claude-account-orchestrator --remote-access       # Run with tmux + Slack channels
+kakaostyle-claude-nonstop                       # Run Claude (best account, auto-switching)
+kakaostyle-claude-nonstop -p "fix the bug"      # One-shot prompt
+kakaostyle-claude-nonstop status                # Show usage across all accounts
+kakaostyle-claude-nonstop --remote-access       # Run with tmux + Slack channels
 ```
 
 Sample `status` output:
@@ -45,8 +45,8 @@ On launch, the runner checks usage across all accounts and picks the best one. I
 Assign lower numbers to more preferred accounts:
 
 ```bash
-claude-account-orchestrator set-priority work 1
-claude-account-orchestrator set-priority personal 2
+kakaostyle-claude-nonstop set-priority work 1
+kakaostyle-claude-nonstop set-priority personal 2
 ```
 
 With that setup:
@@ -126,8 +126,8 @@ Your existing `~/.claude` account is auto-detected as "default". Verify with `cl
 Add additional accounts (each must be a different Claude subscription). Names can contain letters, numbers, hyphens, and underscores:
 
 ```bash
-claude-account-orchestrator add work
-claude-account-orchestrator add personal
+kakaostyle-claude-nonstop add work
+kakaostyle-claude-nonstop add personal
 ```
 
 Each `add` opens your browser for OAuth. After login, claude-nonstop checks for duplicate accounts (same email) and removes them automatically.
@@ -138,7 +138,7 @@ Verify all accounts are working:
 claude-nonstop status
 ```
 
-Then just run `claude-account-orchestrator` — rate limit switching is automatic.
+Then just run `kakaostyle-claude-nonstop` — rate limit switching is automatic.
 
 **Troubleshooting:**
 - OAuth didn't complete? Run `claude-nonstop reauth`
