@@ -18,7 +18,7 @@ function simulateSwapLoop({
   allAccountsWithUsage,
   cwd,
   maxSwaps = 5,
-  runOnceResults, // Array of { exitCode, rateLimitDetected, resetTime, sessionId }
+  runOnceResults, // Array of { exitCode, rateLimitDetected, failbackDetected, resetTime, sessionId }
   postSleepUsage, // Optional: replacement usage data after sleeping (simulates re-fetch)
 }) {
   let swapCount = 0;
@@ -28,16 +28,18 @@ function simulateSwapLoop({
 
   for (const result of runOnceResults) {
     // Normal exit
-    if (result.exitCode !== null && !result.rateLimitDetected) {
+    if (result.exitCode !== null && !result.rateLimitDetected && !result.failbackDetected) {
       return { exitCode: result.exitCode, swapLog, sleepLog, finalAccount: currentAccount, finalArgs: claudeArgs };
     }
 
-    if (!result.rateLimitDetected) {
+    if (!result.rateLimitDetected && !result.failbackDetected) {
       return { exitCode: result.exitCode ?? 1, swapLog, sleepLog, finalAccount: currentAccount, finalArgs: claudeArgs };
     }
 
-    // Rate limit — attempt swap
-    swapCount++;
+    if (result.rateLimitDetected) {
+      // Rate limit — attempt swap
+      swapCount++;
+    }
 
     if (swapCount > maxSwaps) {
       return { exitCode: 1, swapLog, sleepLog, error: 'max_swaps_reached', finalAccount: currentAccount, finalArgs: claudeArgs };
@@ -137,6 +139,7 @@ describe('rate limit swap loop', () => {
       name,
       configDir,
       token: `sk-ant-oat01-${name}`,
+      priority: opts.priority ?? undefined,
       usage: {
         sessionPercent,
         weeklyPercent,
@@ -258,6 +261,31 @@ describe('rate limit swap loop', () => {
     const hash = getCwdHash(CWD);
     const gammaSession = join(acctC.configDir, 'projects', hash, `${SESSION_ID}.jsonl`);
     assert.ok(existsSync(gammaSession), 'session should be migrated to gamma');
+  });
+
+  it('failback event → returns to higher-priority account without using swap budget', () => {
+    const acctA = makeAccount('work', 8, 12, { priority: 1 });
+    const acctB = makeAccount('personal', 60, 55, { priority: 2 });
+
+    setupSessionFiles(acctB, SESSION_ID);
+
+    const result = simulateSwapLoop({
+      claudeArgs: ['--resume', SESSION_ID],
+      currentAccount: acctB,
+      allAccountsWithUsage: [acctA, acctB],
+      cwd: CWD,
+      maxSwaps: 1,
+      runOnceResults: [
+        { exitCode: null, rateLimitDetected: false, failbackDetected: true, resetTime: null, sessionId: SESSION_ID },
+        { exitCode: 0, rateLimitDetected: false, failbackDetected: false, resetTime: null, sessionId: SESSION_ID },
+      ],
+    });
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.swapLog.length, 1);
+    assert.equal(result.swapLog[0].from, 'personal');
+    assert.equal(result.swapLog[0].to, 'work');
+    assert.equal(result.finalAccount.name, 'work');
   });
 
   it('max swaps reached → returns error', () => {

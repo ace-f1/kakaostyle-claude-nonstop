@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * claude-nonstop — Multi-account switching + Slack remote access for Claude Code.
+ * claude-account-orchestrator — Multi-account switching + Slack remote access for Claude Code.
  *
  * Run `claude-nonstop help` for usage.
  */
@@ -1582,13 +1582,13 @@ function extractAccountFlag(args) {
 
 function printHelp() {
   console.log(`
-claude-nonstop — Multi-account switching + Slack remote access for Claude Code
+claude-account-orchestrator — Priority-aware switching + Slack remote access for Claude Code
 
 Usage:
-  claude-nonstop                       Run Claude (best account, auto-switching)
-  claude-nonstop -p "prompt"           One-shot prompt
-  claude-nonstop status                Show usage across all accounts
-  claude-nonstop --remote-access       Run with tmux + Slack channels
+  claude-account-orchestrator                       Run Claude (best account, auto-switching)
+  claude-account-orchestrator -p "prompt"           One-shot prompt
+  claude-account-orchestrator status                Show usage across all accounts
+  claude-account-orchestrator --remote-access       Run with tmux + Slack channels
 
 Commands:
   status               Show usage with progress bars and reset times
@@ -1606,6 +1606,7 @@ Commands:
                          use --unset      Revert to default ~/.claude
                          use              Show current active account
   set-priority <name> <n>  Set account priority (1 = highest). Use "clear" to remove.
+                           With priorities enabled, recovered primary accounts auto-fail back.
   setup                Configure Slack remote access
   webhook              Webhook service management
   hooks                Hook management
@@ -1617,6 +1618,12 @@ Options:
   --remote-access         Run in tmux with Slack channels
 
 All other arguments are passed through to \`claude\`.
+Failback tuning:
+  CLAUDE_NONSTOP_FAILBACK_POLL_MS      How often to check for primary recovery (default: 60000)
+  CLAUDE_NONSTOP_FAILBACK_IDLE_MS      Required quiet period before failback (default: 5000)
+  CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS  Minimum delay after a switch before failback (default: 600000)
+  CLAUDE_NONSTOP_DISABLE_FAILBACK=1    Disable proactive failback
+
 Run \`setup --help\`, \`webhook\`, or \`hooks\` for subcommand details.
 `.trim());
 }

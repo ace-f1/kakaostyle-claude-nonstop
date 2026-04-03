@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickBestAccount, pickByPriority, PRIORITY_THRESHOLD } from '../../../lib/scorer.js';
+import { pickBestAccount, pickByPriority, findFailbackAccount, PRIORITY_THRESHOLD } from '../../../lib/scorer.js';
 
 const makeAccount = (name, sessionPercent, weeklyPercent, opts = {}) => ({
   name,
@@ -228,6 +228,74 @@ describe('pickBestAccount with usePriority', () => {
     ];
     const result = pickBestAccount(accounts, undefined, { usePriority: true });
     assert.equal(result.account.name, 'backup2');
+  });
+});
+
+describe('findFailbackAccount', () => {
+  it('returns a higher-priority recovered account when current is fallback', () => {
+    const accounts = [
+      makeAccount('work', 10, 12, { priority: 1 }),
+      makeAccount('personal', 55, 40, { priority: 2 }),
+    ];
+
+    const result = findFailbackAccount(accounts, accounts[1], {
+      usePriority: true,
+      cooldownMs: 0,
+      lastSwitchAt: 0,
+      now: 1_000_000,
+    });
+
+    assert.ok(result);
+    assert.equal(result.account.name, 'work');
+    assert.match(result.reason, /higher-priority account recovered/);
+  });
+
+  it('returns null when already on the highest-priority account', () => {
+    const accounts = [
+      makeAccount('work', 10, 12, { priority: 1 }),
+      makeAccount('personal', 55, 40, { priority: 2 }),
+    ];
+
+    const result = findFailbackAccount(accounts, accounts[0], {
+      usePriority: true,
+      cooldownMs: 0,
+      lastSwitchAt: 0,
+      now: 1_000_000,
+    });
+
+    assert.equal(result, null);
+  });
+
+  it('returns null during cooldown', () => {
+    const accounts = [
+      makeAccount('work', 5, 10, { priority: 1 }),
+      makeAccount('personal', 70, 65, { priority: 2 }),
+    ];
+
+    const result = findFailbackAccount(accounts, accounts[1], {
+      usePriority: true,
+      cooldownMs: 60_000,
+      lastSwitchAt: 980_000,
+      now: 1_000_000,
+    });
+
+    assert.equal(result, null);
+  });
+
+  it('returns null when the higher-priority account is still exhausted', () => {
+    const accounts = [
+      makeAccount('work', 99, 99, { priority: 1 }),
+      makeAccount('personal', 40, 35, { priority: 2 }),
+    ];
+
+    const result = findFailbackAccount(accounts, accounts[1], {
+      usePriority: true,
+      cooldownMs: 0,
+      lastSwitchAt: 0,
+      now: 1_000_000,
+    });
+
+    assert.equal(result, null);
   });
 });
 

@@ -1,9 +1,10 @@
 {
-  "name": "claude-nonstop",
+  "name": "claude-account-orchestrator",
   "version": "0.2.0",
-  "description": "Automatic Claude Code account switching on rate limits + Slack remote access",
+  "description": "Priority-aware Claude Code account orchestration with failover, failback, and optional Slack remote access",
   "type": "module",
   "bin": {
+    "claude-account-orchestrator": "./bin/claude-nonstop.js",
     "claude-nonstop": "./bin/claude-nonstop.js"
   },
   "scripts": {
@@ -27,22 +28,16 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "author": "Rahul Chandrasekaran",
+  "author": "ace.f1 (forked from Rahul Chandrasekaran)",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rchaz/claude-nonstop.git"
-  },
-  "bugs": {
-    "url": "https://github.com/rchaz/claude-nonstop/issues"
-  },
-  "homepage": "https://github.com/rchaz/claude-nonstop#readme",
   "keywords": [
     "claude",
     "claude-code",
     "rate-limit",
     "account-switching",
     "multi-account",
+    "failback",
+    "priority",
     "slack",
     "remote-access",
     "tmux",

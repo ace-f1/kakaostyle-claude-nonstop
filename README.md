@@ -1,11 +1,13 @@
-# claude-nonstop
+# claude-account-orchestrator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 
-Multi-account switching + Slack remote access for Claude Code.
+Priority-aware multi-account switching + Slack remote access for Claude Code.
 
-**Multi-account switching:** When you hit a rate limit mid-session, claude-nonstop kills the idle process, migrates your session to a different account, and resumes — fully automated, zero downtime.
+**Failover:** When you hit a rate limit mid-session, the runner migrates your session to a different account and resumes automatically.
+
+**Failback:** When your preferred higher-priority account recovers while a lower-priority fallback account is active, the runner polls usage in the background and returns to the recovered primary account once the session is idle.
 
 **Slack remote access:** Each Claude Code session gets a dedicated Slack channel. Send messages in the channel to control Claude remotely. Claude's responses are posted back to the channel.
 
@@ -18,10 +20,10 @@ Multi-account switching + Slack remote access for Claude Code.
 ## Usage
 
 ```bash
-claude-nonstop                       # Run Claude (best account, auto-switching)
-claude-nonstop -p "fix the bug"      # One-shot prompt
-claude-nonstop status                # Show usage across all accounts
-claude-nonstop --remote-access       # Run with tmux + Slack channels
+claude-account-orchestrator                       # Run Claude (best account, auto-switching)
+claude-account-orchestrator -p "fix the bug"      # One-shot prompt
+claude-account-orchestrator status                # Show usage across all accounts
+claude-account-orchestrator --remote-access       # Run with tmux + Slack channels
 ```
 
 Sample `status` output:
@@ -36,7 +38,30 @@ Sample `status` output:
     7-day:   ██░░░░░░░░░░░░░░░░░░ 8%
 ```
 
-On launch, claude-nonstop checks usage across all accounts and picks the one with the most headroom. If you hit a rate limit mid-session, it automatically switches to the next best account and resumes your conversation.
+On launch, the runner checks usage across all accounts and picks the best one. If you hit a rate limit mid-session, it switches to the next best account and resumes your conversation. If you assign priorities, it also watches for a recovered primary account and automatically fails back to it after a quiet period.
+
+## Priority-Based Failback
+
+Assign lower numbers to more preferred accounts:
+
+```bash
+claude-account-orchestrator set-priority work 1
+claude-account-orchestrator set-priority personal 2
+```
+
+With that setup:
+
+- `work` stays primary whenever it is under the near-exhausted threshold.
+- If `work` hits a limit, the session fails over to `personal`.
+- While running on `personal`, the runner polls usage every minute.
+- As soon as `work` recovers and the active Claude session has been quiet for 5 seconds, the runner migrates the session back to `work`.
+
+Environment variables:
+
+- `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks
+- `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback
+- `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback
+- `CLAUDE_NONSTOP_DISABLE_FAILBACK=1`: disable proactive failback
 
 ## Commands
 
@@ -101,8 +126,8 @@ Your existing `~/.claude` account is auto-detected as "default". Verify with `cl
 Add additional accounts (each must be a different Claude subscription). Names can contain letters, numbers, hyphens, and underscores:
 
 ```bash
-claude-nonstop add work
-claude-nonstop add personal
+claude-account-orchestrator add work
+claude-account-orchestrator add personal
 ```
 
 Each `add` opens your browser for OAuth. After login, claude-nonstop checks for duplicate accounts (same email) and removes them automatically.
@@ -113,7 +138,7 @@ Verify all accounts are working:
 claude-nonstop status
 ```
 
-Then just run `claude-nonstop` — rate limit switching is automatic.
+Then just run `claude-account-orchestrator` — rate limit switching is automatic.
 
 **Troubleshooting:**
 - OAuth didn't complete? Run `claude-nonstop reauth`
