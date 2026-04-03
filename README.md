@@ -7,7 +7,7 @@ KakaoStyle fork of `claude-nonstop` with priority-aware multi-account switching,
 
 **Failover:** When you hit a rate limit mid-session, the runner migrates your session to a different account and resumes automatically.
 
-**Failback:** When your preferred higher-priority account recovers while a lower-priority fallback account is active, the runner polls usage in the background and returns to the recovered primary account once the session is idle.
+**Optional failback:** When enabled, the runner polls usage in the background and returns to a recovered higher-priority account once the session is idle.
 
 **Slack remote access:** Each Claude Code session gets a dedicated Slack channel. Send messages in the channel to control Claude remotely. Claude's responses are posted back to the channel.
 
@@ -38,9 +38,11 @@ Sample `status` output:
     7-day:   ██░░░░░░░░░░░░░░░░░░ 8%
 ```
 
-On launch, the runner checks usage across all accounts and picks the best one. If you hit a rate limit mid-session, it switches to the next best account and resumes your conversation. If you assign priorities, it also watches for a recovered primary account and automatically fails back to it after a quiet period.
+On launch, the runner checks usage across all accounts and picks the best one. If you hit a rate limit mid-session, it switches to the next best account and resumes your conversation. Priority-based failback is available as an explicit option.
 
 ## Priority-Based Failback
+
+This scenario is disabled by default. Enable it explicitly with `--auto-failback`.
 
 Assign lower numbers to more preferred accounts:
 
@@ -55,6 +57,12 @@ With that setup:
 - If `work` hits a limit, the session fails over to `personal`.
 - While running on `personal`, the runner polls usage every minute.
 - As soon as `work` recovers and the active Claude session has been quiet for 5 seconds, the runner migrates the session back to `work`.
+
+Run it like this:
+
+```bash
+kakaostyle-claude-nonstop --auto-failback
+```
 
 ### Example: Company `Pro` + Personal `Max`
 
@@ -75,8 +83,17 @@ Expected runtime behavior:
 - Once `work` is healthy again, automatically fail back from `personal` to `work`.
 - Do not consume extra swap budget for the failback hop.
 
+CLI options:
+
+- `--auto-failback`: enable proactive failback
+- `--no-auto-failback`: force failback off
+- `--failback-poll-ms <n>`: polling interval
+- `--failback-idle-ms <n>`: quiet window before failback
+- `--failback-cooldown-ms <n>`: cooldown after a switch
+
 Environment variables:
 
+- `CLAUDE_NONSTOP_AUTO_FAILBACK=1`: enable proactive failback by default
 - `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks
 - `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback
 - `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback
@@ -91,10 +108,11 @@ Recommended manual test flow:
 2. Shorten timing so failback is easy to observe:
 
 ```bash
-CLAUDE_NONSTOP_FAILBACK_POLL_MS=5000 \
-CLAUDE_NONSTOP_FAILBACK_IDLE_MS=2000 \
-CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS=5000 \
-kakaostyle-claude-nonstop
+kakaostyle-claude-nonstop \
+  --auto-failback \
+  --failback-poll-ms 5000 \
+  --failback-idle-ms 2000 \
+  --failback-cooldown-ms 5000
 ```
 
 3. Trigger or wait for a `work -> personal` failover.

@@ -474,6 +474,8 @@ async function cmdRun(claudeArgs) {
     claudeArgs.splice(remoteAccessIdx, 1);
   }
 
+  const failbackOptions = extractFailbackOptions(claudeArgs);
+
   // Extract --account / -a flag (consume it, don't pass to claude)
   const requestedAccount = extractAccountFlag(claudeArgs);
 
@@ -596,7 +598,10 @@ async function cmdRun(claudeArgs) {
   }
 
   // Run with auto-switching
-  await run(claudeArgs, selectedAccount, accounts, { remoteAccess });
+  await run(claudeArgs, selectedAccount, accounts, {
+    remoteAccess,
+    ...failbackOptions,
+  });
 }
 
 async function cmdResume(resumeArgs) {
@@ -606,6 +611,8 @@ async function cmdResume(resumeArgs) {
   if (remoteAccess) {
     resumeArgs.splice(remoteAccessIdx, 1);
   }
+
+  const failbackOptions = extractFailbackOptions(resumeArgs);
 
   // Extract --account / -a flag (consume it, don't pass to claude)
   const requestedAccount = extractAccountFlag(resumeArgs);
@@ -746,7 +753,51 @@ async function cmdResume(resumeArgs) {
     }
   }
 
-  await run(claudeArgs, selectedAccount, accounts, { remoteAccess });
+  await run(claudeArgs, selectedAccount, accounts, {
+    remoteAccess,
+    ...failbackOptions,
+  });
+}
+
+function extractFailbackOptions(args) {
+  const options = {};
+
+  const autoIdx = args.indexOf('--auto-failback');
+  if (autoIdx !== -1) {
+    options.autoFailback = true;
+    args.splice(autoIdx, 1);
+  }
+
+  const noAutoIdx = args.indexOf('--no-auto-failback');
+  if (noAutoIdx !== -1) {
+    options.autoFailback = false;
+    args.splice(noAutoIdx, 1);
+  }
+
+  options.failbackPollMs = extractPositiveIntegerFlag(args, '--failback-poll-ms');
+  options.failbackIdleMs = extractPositiveIntegerFlag(args, '--failback-idle-ms');
+  options.failbackCooldownMs = extractPositiveIntegerFlag(args, '--failback-cooldown-ms');
+
+  return options;
+}
+
+function extractPositiveIntegerFlag(args, flag) {
+  const idx = args.indexOf(flag);
+  if (idx === -1) return undefined;
+  if (idx + 1 >= args.length) {
+    console.error(`Error: ${flag} requires a value in milliseconds.`);
+    process.exit(1);
+  }
+
+  const value = Number.parseInt(args[idx + 1], 10);
+  args.splice(idx, 2);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    console.error(`Error: ${flag} must be a positive integer in milliseconds.`);
+    process.exit(1);
+  }
+
+  return value;
 }
 
 // ─── Use & Priority Commands ────────────────────────────────────────────────
@@ -1582,13 +1633,14 @@ function extractAccountFlag(args) {
 
 function printHelp() {
   console.log(`
-claude-account-orchestrator — Priority-aware switching + Slack remote access for Claude Code
+kakaostyle-claude-nonstop — Multi-account switching + optional priority failback for Claude Code
 
 Usage:
-  claude-account-orchestrator                       Run Claude (best account, auto-switching)
-  claude-account-orchestrator -p "prompt"           One-shot prompt
-  claude-account-orchestrator status                Show usage across all accounts
-  claude-account-orchestrator --remote-access       Run with tmux + Slack channels
+  kakaostyle-claude-nonstop                       Run Claude (best account, auto-switching)
+  kakaostyle-claude-nonstop -p "prompt"           One-shot prompt
+  kakaostyle-claude-nonstop status                Show usage across all accounts
+  kakaostyle-claude-nonstop --remote-access       Run with tmux + Slack channels
+  kakaostyle-claude-nonstop --auto-failback       Enable priority-based failback
 
 Commands:
   status               Show usage with progress bars and reset times
@@ -1616,13 +1668,20 @@ Commands:
 Options:
   -a, --account <name>    Use a specific account
   --remote-access         Run in tmux with Slack channels
+  --auto-failback         Reclaim the session when a higher-priority account recovers
+  --no-auto-failback      Explicitly disable proactive failback
+  --failback-poll-ms <n>  Poll interval for recovery checks in milliseconds
+  --failback-idle-ms <n>  Required quiet period before failback in milliseconds
+  --failback-cooldown-ms <n>
+                          Minimum delay after a switch before failback in milliseconds
 
 All other arguments are passed through to \`claude\`.
 Failback tuning:
+  CLAUDE_NONSTOP_AUTO_FAILBACK=1       Enable proactive failback by default
   CLAUDE_NONSTOP_FAILBACK_POLL_MS      How often to check for primary recovery (default: 60000)
   CLAUDE_NONSTOP_FAILBACK_IDLE_MS      Required quiet period before failback (default: 5000)
   CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS  Minimum delay after a switch before failback (default: 600000)
-  CLAUDE_NONSTOP_DISABLE_FAILBACK=1    Disable proactive failback
+  CLAUDE_NONSTOP_DISABLE_FAILBACK=1    Disable proactive failback even when enabled elsewhere
 
 Run \`setup --help\`, \`webhook\`, or \`hooks\` for subcommand details.
 `.trim());
