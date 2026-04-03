@@ -56,12 +56,61 @@ With that setup:
 - While running on `personal`, the runner polls usage every minute.
 - As soon as `work` recovers and the active Claude session has been quiet for 5 seconds, the runner migrates the session back to `work`.
 
+### Example: Company `Pro` + Personal `Max`
+
+Typical KakaoStyle-style setup:
+
+```bash
+kakaostyle-claude-nonstop add work
+kakaostyle-claude-nonstop add personal
+kakaostyle-claude-nonstop set-priority work 1
+kakaostyle-claude-nonstop set-priority personal 2
+```
+
+Expected runtime behavior:
+
+- Start on `work` when the company `Pro` account still has headroom.
+- If `work` hits a rate limit, fail over to `personal` and resume the same session.
+- Keep running on `personal` while the company `Pro` limit window resets.
+- Once `work` is healthy again, automatically fail back from `personal` to `work`.
+- Do not consume extra swap budget for the failback hop.
+
 Environment variables:
 
 - `CLAUDE_NONSTOP_FAILBACK_POLL_MS`: poll interval for recovery checks
 - `CLAUDE_NONSTOP_FAILBACK_IDLE_MS`: required idle window before failback
 - `CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS`: minimum time after a switch before failback
 - `CLAUDE_NONSTOP_DISABLE_FAILBACK=1`: disable proactive failback
+
+### Manual Verification
+
+Recommended manual test flow:
+
+1. Register two accounts and set priority:
+   `work=1`, `personal=2`
+2. Shorten timing so failback is easy to observe:
+
+```bash
+CLAUDE_NONSTOP_FAILBACK_POLL_MS=5000 \
+CLAUDE_NONSTOP_FAILBACK_IDLE_MS=2000 \
+CLAUDE_NONSTOP_FAILBACK_COOLDOWN_MS=5000 \
+kakaostyle-claude-nonstop
+```
+
+3. Trigger or wait for a `work -> personal` failover.
+4. Confirm the session resumes on `personal` with the same `--resume` session.
+5. Wait until `work` usage recovers.
+6. Confirm the runner logs a failback and migrates the session back to `work`.
+
+Expected log shape:
+
+- `Selected "work" (...)`
+- `Rate limit detected on "work" (...)`
+- `Switching to "personal" (...)`
+- `Session <id> migrated successfully`
+- `Higher-priority account recovered while "personal" was active. Failing back...`
+- `Failing back to "work" (...)`
+- `Session <id> migrated successfully`
 
 ## Commands
 
@@ -92,7 +141,7 @@ Environment variables:
 | Command | Description |
 |---------|-------------|
 | `update` | Reinstall from local source |
-| `uninstall` | Remove claude-nonstop completely |
+| `uninstall` | Remove `kakaostyle-claude-nonstop` completely |
 
 Any unrecognized arguments are passed through to `claude` directly. Use `-a <name>` to select a specific account.
 
@@ -101,27 +150,27 @@ Any unrecognized arguments are passed through to `claude` directly. Use `-a <nam
 The easiest way to install is to ask Claude Code:
 
 ```
-You: set up claude-nonstop for me
+You: set up kakaostyle-claude-nonstop for me
 ```
 
-Claude Code will follow the [setup instructions in CLAUDE.md](CLAUDE.md#setting-up-claude-nonstop-for-a-user) to install, configure accounts, and set up Slack remote access interactively. That file also serves as a reference for AI agents automating the setup.
+Claude Code will follow the setup instructions in [CLAUDE.md](CLAUDE.md) to install, configure accounts, and set up Slack remote access interactively. That file also serves as a reference for AI agents automating the setup.
 
 ### Manual install
 
 **Prerequisites:** Node.js 22+ ([download](https://nodejs.org/)), C/C++ build tools (`xcode-select --install` on macOS), Claude Code CLI ([install](https://docs.anthropic.com/en/docs/claude-code/overview)), and tmux for remote access.
 
 ```bash
-git clone https://github.com/rchaz/claude-nonstop.git
-cd claude-nonstop
+git clone https://github.com/ace-f1/kakaostyle-claude-nonstop.git
+cd kakaostyle-claude-nonstop
 npm install -g "$(npm pack)"
-claude-nonstop help
+kakaostyle-claude-nonstop help
 ```
 
 If `npm install -g` fails with compilation errors, you're missing C/C++ build tools.
 
 ## Multi-Account Setup
 
-Your existing `~/.claude` account is auto-detected as "default". Verify with `claude-nonstop list`.
+Your existing `~/.claude` account is auto-detected as "default". Verify with `kakaostyle-claude-nonstop list`.
 
 Add additional accounts (each must be a different Claude subscription). Names can contain letters, numbers, hyphens, and underscores:
 
@@ -130,26 +179,26 @@ kakaostyle-claude-nonstop add work
 kakaostyle-claude-nonstop add personal
 ```
 
-Each `add` opens your browser for OAuth. After login, claude-nonstop checks for duplicate accounts (same email) and removes them automatically.
+Each `add` opens your browser for OAuth. After login, `kakaostyle-claude-nonstop` checks for duplicate accounts (same email) and removes them automatically.
 
 Verify all accounts are working:
 
 ```bash
-claude-nonstop status
+kakaostyle-claude-nonstop status
 ```
 
 Then just run `kakaostyle-claude-nonstop` — rate limit switching is automatic.
 
 **Troubleshooting:**
-- OAuth didn't complete? Run `claude-nonstop reauth`
-- Status shows `error (HTTP 401)`? Run `claude-nonstop reauth`
+- OAuth didn't complete? Run `kakaostyle-claude-nonstop reauth`
+- Status shows `error (HTTP 401)`? Run `kakaostyle-claude-nonstop reauth`
 - "No credentials found"? Run `CLAUDE_CONFIG_DIR="$HOME/.claude-nonstop/profiles/<name>" claude auth login`
 
 **Optional aliases** (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
-alias claude='claude-nonstop'
-alias cn='claude-nonstop --dangerously-skip-permissions'
+alias claude='kakaostyle-claude-nonstop'
+alias cn='kakaostyle-claude-nonstop --dangerously-skip-permissions'
 ```
 
 ## Slack Remote Access
@@ -172,24 +221,24 @@ Create a new app at [api.slack.com/apps](https://api.slack.com/apps). Enable Soc
 ### 2. Run setup
 
 ```bash
-claude-nonstop setup --bot-token xoxb-... --app-token xapp-... --invite-user-id U12345ABCDE
+kakaostyle-claude-nonstop setup --bot-token xoxb-... --app-token xapp-... --invite-user-id U12345ABCDE
 ```
 
-This writes `~/.claude-nonstop/.env`, installs hooks, and starts the webhook service (macOS). Run `setup --help` for all flags. For interactive setup, just run `claude-nonstop setup`.
+This writes `~/.claude-nonstop/.env`, installs hooks, and starts the webhook service (macOS). Run `setup --help` for all flags. For interactive setup, just run `kakaostyle-claude-nonstop setup`.
 
 Find your Slack User ID: click your profile picture > Profile > three-dot menu > Copy member ID.
 
 ### 3. Verify
 
 ```bash
-claude-nonstop webhook status    # Should show "running" with a PID
-claude-nonstop hooks status      # All should show "installed"
+kakaostyle-claude-nonstop webhook status    # Should show "running" with a PID
+kakaostyle-claude-nonstop hooks status      # All should show "installed"
 ```
 
 ### 4. Run with remote access
 
 ```bash
-claude-nonstop --remote-access
+kakaostyle-claude-nonstop --remote-access
 ```
 
 This creates a tmux session named after the current directory, enables `--dangerously-skip-permissions` for unattended operation, and sets `CLAUDE_REMOTE_ACCESS=true` so each session gets a dedicated Slack channel (e.g., `#cn-myproject-abc12345`). Reply in the channel to send messages to Claude.
@@ -209,8 +258,8 @@ This creates a tmux session named after the current directory, enables `--danger
 **Security:** `--remote-access` implies `--dangerously-skip-permissions`, giving Claude full system access. Use `SLACK_ALLOWED_USERS` to restrict who can send commands via Slack.
 
 **Troubleshooting:**
-- Channel not created? Run `claude-nonstop hooks install` then `hooks status`
-- Webhook not receiving? Run `claude-nonstop webhook status` then `webhook logs`
+- Channel not created? Run `kakaostyle-claude-nonstop hooks install` then `hooks status`
+- Webhook not receiving? Run `kakaostyle-claude-nonstop webhook status` then `webhook logs`
 - Messages not reaching Claude? Check `tmux ls` and that Claude is waiting for input
 
 ## How It Works
@@ -222,7 +271,7 @@ This creates a tmux session named after the current directory, enables `--danger
 ## Architecture
 
 ```
-claude-nonstop/
+kakaostyle-claude-nonstop/
 ├── bin/claude-nonstop.js         CLI entry point and command routing
 ├── lib/                          Core logic (ESM)
 │   ├── config.js                 Account registry
@@ -255,11 +304,11 @@ User data lives under `~/.claude-nonstop/` (config, `.env`, profiles, logs). See
 
 ### Usage shows "error (HTTP 401)"
 
-OAuth token expired. Run `claude-nonstop reauth` to refresh all expired accounts.
+OAuth token expired. Run `kakaostyle-claude-nonstop reauth` to refresh all expired accounts.
 
 ### Webhook not receiving messages
 
-Check `claude-nonstop webhook status` and `webhook logs`. Verify Socket Mode is enabled and bot events (`message.channels`, `message.im`) are subscribed in your Slack app settings.
+Check `kakaostyle-claude-nonstop webhook status` and `webhook logs`. Verify Socket Mode is enabled and bot events (`message.channels`, `message.im`) are subscribed in your Slack app settings.
 
 ### Messages not reaching Claude
 
