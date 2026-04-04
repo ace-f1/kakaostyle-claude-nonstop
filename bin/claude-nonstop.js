@@ -15,6 +15,7 @@ import { addAccount, removeAccount, getAccounts, ensureDefaultAccount, validateA
 import { readCredentials, isTokenExpired, deleteKeychainEntry } from '../lib/keychain.js';
 import { checkAllUsage, checkUsage, fetchProfile } from '../lib/usage.js';
 import { pickBestAccount, pickByPriority } from '../lib/scorer.js';
+import { applyRateLimitState } from '../lib/rate-limit-state.js';
 import { run } from '../lib/runner.js';
 import { reauthAccount, reauthExpiredAccounts, silentRefresh } from '../lib/reauth.js';
 import { isMacOS } from '../lib/platform.js';
@@ -559,7 +560,7 @@ async function cmdRun(claudeArgs) {
   } else {
     // Multiple accounts — check usage and pick best
     console.error('[claude-nonstop] Checking usage across accounts...');
-    const withUsage = await checkAllUsage(authenticated);
+    const withUsage = applyRateLimitState(await checkAllUsage(authenticated));
 
     // Check if any authenticated accounts have API auth errors (expired or revoked)
     const apiExpired = withUsage.filter(a =>
@@ -709,7 +710,7 @@ async function cmdResume(resumeArgs) {
     console.error(`[claude-nonstop] Using account "${selectedAccount.name}"`);
   } else {
     console.error('[claude-nonstop] Checking usage across accounts...');
-    const withUsage = await checkAllUsage(authenticated);
+    const withUsage = applyRateLimitState(await checkAllUsage(authenticated));
 
     const apiExpired = withUsage.filter(a =>
       a.usage?.error === 'HTTP 401' || a.usage?.error === 'HTTP 403'
@@ -1323,8 +1324,8 @@ function installHooksToAllProfiles() {
         raw = raw.replace(/\x1b\[[0-9;]*m/g, '');
         settings = JSON.parse(raw);
       } catch {
-        console.warn(`  Warning: Could not parse ${settingsPath}, preserving skipDangerousModePermissionPrompt`);
-        settings = { skipDangerousModePermissionPrompt: true };
+        console.warn(`  Warning: Could not parse ${settingsPath}, skipping this profile to avoid data loss`);
+        continue;
       }
     }
 
