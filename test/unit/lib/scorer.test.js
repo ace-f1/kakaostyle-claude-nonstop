@@ -320,3 +320,33 @@ describe('PRIORITY_THRESHOLD', () => {
     assert.equal(PRIORITY_THRESHOLD, 98);
   });
 });
+
+describe('pickBestAccount — HTTP 429 handling', () => {
+  it('includes HTTP 429 accounts as candidates (not excluded like other errors)', () => {
+    const accounts = [
+      makeAccount('rate-limited', 0, 0, { error: 'HTTP 429' }),
+      makeAccount('auth-error', 0, 0, { error: 'HTTP 401' }),
+    ];
+    const result = pickBestAccount(accounts);
+    assert.equal(result.account.name, 'rate-limited');
+  });
+
+  it('treats HTTP 429 account as 0% utilization (unknown usage)', () => {
+    const accounts = [
+      makeAccount('rate-limited', 0, 0, { error: 'HTTP 429' }),
+      makeAccount('normal', 50, 50),
+    ];
+    const result = pickBestAccount(accounts);
+    assert.equal(result.account.name, 'rate-limited');
+  });
+
+  it('with priorities: selects lower-priority 429 account over higher-priority 429 excluded account', () => {
+    const accounts = [
+      makeAccount('work', 0, 0, { error: 'HTTP 429', priority: 1 }),
+      makeAccount('personal', 0, 0, { error: 'HTTP 429', priority: 2 }),
+    ];
+    // Excluding work (current account) — personal should be picked
+    const result = pickBestAccount(accounts, 'work', { usePriority: true });
+    assert.equal(result.account.name, 'personal');
+  });
+});

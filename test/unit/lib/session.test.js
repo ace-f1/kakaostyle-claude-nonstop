@@ -359,3 +359,75 @@ describe('migrateSessionByHash', () => {
     assert.throws(() => migrateSessionByHash(fromDir, toDir, '-x', '../../../etc'), /Invalid session ID/);
   });
 });
+
+describe('UUID directory format (Claude Code v2+)', () => {
+  let tempDir;
+  beforeEach(() => { tempDir = createTempDir(); });
+  afterEach(() => { removeTempDir(tempDir); });
+
+  it('findLatestSession finds UUID directory format', () => {
+    const cwd = '/tmp/myproject';
+    const hash = getCwdHash(cwd);
+    const projectDir = join(tempDir, 'projects', hash);
+    mkdirSync(join(projectDir, UUID1), { recursive: true });
+
+    const result = findLatestSession(tempDir, cwd);
+    assert.ok(result, 'should find session');
+    assert.equal(result.sessionId, UUID1);
+  });
+
+  it('findLatestSession prefers newer UUID directory over older one', () => {
+    const cwd = '/tmp/myproject';
+    const hash = getCwdHash(cwd);
+    const projectDir = join(tempDir, 'projects', hash);
+    mkdirSync(join(projectDir, UUID1), { recursive: true });
+    mkdirSync(join(projectDir, UUID2), { recursive: true });
+
+    // Make UUID2 newer
+    const future = new Date(Date.now() + 1000);
+    utimesSync(join(projectDir, UUID2), future, future);
+
+    const result = findLatestSession(tempDir, cwd);
+    assert.equal(result.sessionId, UUID2);
+  });
+
+  it('findLatestSession finds legacy .jsonl alongside UUID directories', () => {
+    const cwd = '/tmp/myproject';
+    const hash = getCwdHash(cwd);
+    const projectDir = join(tempDir, 'projects', hash);
+    mkdirSync(join(projectDir, UUID1), { recursive: true });
+    writeFileSync(join(projectDir, `${UUID2}.jsonl`), 'data');
+
+    // Make .jsonl newer
+    const future = new Date(Date.now() + 1000);
+    utimesSync(join(projectDir, `${UUID2}.jsonl`), future, future);
+
+    const result = findLatestSession(tempDir, cwd);
+    assert.equal(result.sessionId, UUID2);
+  });
+
+  it('migrateSession copies UUID directory format', () => {
+    const cwd = '/tmp/myproject';
+    const fromDir = join(tempDir, 'from');
+    const toDir = join(tempDir, 'to');
+    const hash = getCwdHash(cwd);
+    const srcSession = join(fromDir, 'projects', hash, UUID1);
+    mkdirSync(join(srcSession, 'subagents'), { recursive: true });
+    writeFileSync(join(srcSession, 'subagents', 'agent.jsonl'), 'subagent-data');
+
+    const result = migrateSession(fromDir, toDir, cwd, UUID1);
+    assert.equal(result.success, true);
+    assert.ok(existsSync(join(toDir, 'projects', hash, UUID1, 'subagents', 'agent.jsonl')));
+  });
+
+  it('findSessionAcrossProfiles finds UUID directory format', () => {
+    const hash = '-tmp-project';
+    const configDir = join(tempDir, 'profile');
+    mkdirSync(join(configDir, 'projects', hash, UUID1), { recursive: true });
+
+    const accounts = [{ name: 'test', configDir }];
+    const result = findSessionAcrossProfiles(accounts, UUID1);
+    assert.ok(result, 'should find session');
+    assert.equal(result.account.name, 'test');
+  });
+});
