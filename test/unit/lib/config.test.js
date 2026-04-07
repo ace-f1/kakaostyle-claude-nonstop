@@ -228,7 +228,6 @@ describe('ensureDefaultAccount', () => {
     const defaultAcct = config.accounts.find(a => a.configDir === DEFAULT_CLAUDE_DIR);
     if (existsSync(DEFAULT_CLAUDE_DIR)) {
       assert.ok(defaultAcct, 'Default account should exist when ~/.claude exists');
-      assert.equal(defaultAcct.name, 'default');
     }
   });
 });

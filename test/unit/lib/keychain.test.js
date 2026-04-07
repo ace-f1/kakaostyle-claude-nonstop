@@ -6,6 +6,7 @@ import {
   calculateConfigDirHash,
   expandPath,
   getServiceName,
+  getLegacyServiceName,
   isTokenExpired,
   parseCredentialJson,
   readCredentials,
@@ -49,15 +50,20 @@ describe('expandPath', () => {
 });
 
 describe('getServiceName', () => {
-  it('returns "Claude Code-credentials" for default dir', () => {
+  it('returns hash-based name for default dir', () => {
     const defaultDir = normalize(join(homedir(), '.claude'));
     const name = getServiceName(defaultDir);
-    assert.equal(name, 'Claude Code-credentials');
+    assert.match(name, /^Claude Code-credentials-[a-f0-9]{8}$/);
   });
 
-  it('returns "Claude Code-credentials" for ~ version of default dir', () => {
+  it('returns hash-based name for ~ version of default dir', () => {
     const name = getServiceName('~/.claude');
-    assert.equal(name, 'Claude Code-credentials');
+    assert.match(name, /^Claude Code-credentials-[a-f0-9]{8}$/);
+  });
+
+  it('default dir hash is consistent across path formats', () => {
+    const defaultDir = normalize(join(homedir(), '.claude'));
+    assert.equal(getServiceName(defaultDir), getServiceName('~/.claude'));
   });
 
   it('includes hash for custom directories', () => {
@@ -69,6 +75,17 @@ describe('getServiceName', () => {
     const name1 = getServiceName('/tmp/dir1');
     const name2 = getServiceName('/tmp/dir2');
     assert.notEqual(name1, name2);
+  });
+});
+
+describe('getLegacyServiceName', () => {
+  it('returns legacy name for default dir', () => {
+    const name = getLegacyServiceName('~/.claude');
+    assert.equal(name, 'Claude Code-credentials');
+  });
+
+  it('returns null for custom dirs', () => {
+    assert.equal(getLegacyServiceName('/tmp/custom-dir'), null);
   });
 });
 

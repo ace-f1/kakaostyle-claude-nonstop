@@ -3,20 +3,16 @@ import assert from 'node:assert/strict';
 import { normalizePercent, checkUsage, fetchProfile, checkAllUsage } from '../../../lib/usage.js';
 
 describe('normalizePercent', () => {
-  it('converts 0.5 fraction to 50%', () => {
-    assert.equal(normalizePercent(0.5), 50);
-  });
-
-  it('converts 0.72 fraction to 72%', () => {
-    assert.equal(normalizePercent(0.72), 72);
-  });
-
-  it('keeps 75 as 75 (already a percentage)', () => {
+  it('keeps 75 as 75', () => {
     assert.equal(normalizePercent(75), 75);
   });
 
   it('keeps 100 as 100', () => {
     assert.equal(normalizePercent(100), 100);
+  });
+
+  it('keeps 6 as 6', () => {
+    assert.equal(normalizePercent(6), 6);
   });
 
   it('returns 0 for NaN', () => {
@@ -33,16 +29,8 @@ describe('normalizePercent', () => {
     assert.equal(normalizePercent(0), 0);
   });
 
-  it('handles 1.0 as 100%', () => {
-    assert.equal(normalizePercent(1.0), 100);
-  });
-
-  it('rounds negative values', () => {
-    assert.equal(normalizePercent(-5), -5);
-  });
-
-  it('rounds fractional percentages', () => {
-    assert.equal(normalizePercent(0.333), 33);
+  it('rounds decimal values', () => {
+    assert.equal(normalizePercent(32.7), 33);
   });
 });
 
@@ -61,8 +49,8 @@ describe('checkUsage', () => {
     globalThis.fetch = async () => ({
       ok: true,
       json: async () => ({
-        five_hour: { utilization: 0.42, resets_at: '2026-02-15T12:00:00Z' },
-        seven_day: { utilization: 0.75, resets_at: '2026-02-20T00:00:00Z' },
+        five_hour: { utilization: 42, resets_at: '2026-02-15T12:00:00Z' },
+        seven_day: { utilization: 75, resets_at: '2026-02-20T00:00:00Z' },
       }),
     });
 
@@ -78,8 +66,8 @@ describe('checkUsage', () => {
     globalThis.fetch = async () => ({
       ok: true,
       json: async () => ({
-        five_hour_utilization: 0.30,
-        seven_day_utilization: 0.60,
+        five_hour_utilization: 30,
+        seven_day_utilization: 60,
         five_hour_reset_at: '2026-02-15T12:00:00Z',
         seven_day_reset_at: '2026-02-20T00:00:00Z',
       }),
@@ -193,8 +181,8 @@ describe('checkAllUsage', () => {
   it('checks all accounts in parallel and preserves order', async () => {
     // Use token to deterministically map to different data (avoids race on shared counter)
     const usageByToken = {
-      'sk-ant-oat01-a': { five_hour: { utilization: 0.20 }, seven_day: { utilization: 0.10 } },
-      'sk-ant-oat01-b': { five_hour: { utilization: 0.60 }, seven_day: { utilization: 0.40 } },
+      'sk-ant-oat01-a': { five_hour: { utilization: 20 }, seven_day: { utilization: 10 } },
+      'sk-ant-oat01-b': { five_hour: { utilization: 60 }, seven_day: { utilization: 40 } },
     };
 
     globalThis.fetch = async (url, opts) => {

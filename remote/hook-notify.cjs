@@ -160,7 +160,7 @@ function findTranscriptPath(sessionId, cwd) {
     const expandedConfigDir = configDir.startsWith('~')
         ? configDir.replace(/^~/, require('os').homedir())
         : configDir;
-    const cwdHash = cwd.replace(/\//g, '-');
+    const cwdHash = cwd.replace(/[/.]/g, '-');
     const transcriptPath = path.join(expandedConfigDir, 'projects', cwdHash, `${sessionId}.jsonl`);
 
     try {

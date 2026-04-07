@@ -70,7 +70,7 @@ describe('getCwdHash', () => {
     const result = getCwdHash('~/code/project');
     assert.ok(result.startsWith('-'));
     assert.ok(!result.includes('~'));
-    const expected = `${homedir()}/code/project`.replace(/\//g, '-');
+    const expected = `${homedir()}/code/project`.replace(/[/.]/g, '-');
     assert.equal(result, expected);
   });
 

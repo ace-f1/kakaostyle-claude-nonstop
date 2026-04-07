@@ -427,8 +427,9 @@ async function cmdStatus() {
     // Merge profiles into usage results
     const profileMap = Object.fromEntries(authenticated.map((a, i) => [a.name, profiles[i]]));
 
-    // Find best account for display
-    const best = pickBestAccount(withUsage);
+    // Find best account for display (respect priority when configured)
+    const hasPriorities = withUsage.some(a => a.priority != null);
+    const best = pickBestAccount(withUsage, undefined, { usePriority: hasPriorities });
     const bestName = best?.account?.name;
 
     for (const account of withUsage) {

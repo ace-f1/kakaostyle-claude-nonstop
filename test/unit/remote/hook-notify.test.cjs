@@ -633,7 +633,7 @@ describe('findTranscriptPath', () => {
     process.env.CLAUDE_CONFIG_DIR = tempDir;
     const cwd = '/Users/test/myproject';
     const sessionId = 'abc-123-def';
-    const cwdHash = cwd.replace(/\//g, '-');
+    const cwdHash = cwd.replace(/[/.]/g, '-');
     const projectDir = path.join(tempDir, 'projects', cwdHash);
     fs.mkdirSync(projectDir, { recursive: true });
     fs.writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '{}');
